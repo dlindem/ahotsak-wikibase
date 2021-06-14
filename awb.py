@@ -19,53 +19,46 @@ max1props = config.max1props
 logging.basicConfig(filename=config.datafolder+'logs/awb.log', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%m-%y %H:%M:%S')
 
 # WDI setup
-
-with open(config.datafolder+'wikibase/DavidL_bot_pwd.txt', 'r', encoding='utf-8') as pwdfile:
-	awbbotpass = pwdfile.read()
 mediawiki_api_url = "https://datuak.ahotsak.eus/w/api.php" # <- change to applicable wikibase
 sparql_endpoint_url = "https://datuak.ahotsak.eus/query/sparql"  # <- change to applicable wikibase
-login = wdi_login.WDLogin(config.awbuser, awbbotpass, mediawiki_api_url=mediawiki_api_url)
+login = wdi_login.WDLogin(config.awbuser, config.awbuserpass, mediawiki_api_url=mediawiki_api_url)
 awbEngine = wdi_core.WDItemEngine.wikibase_item_engine_factory(mediawiki_api_url, sparql_endpoint_url)
 
-# LexBib wikibase OAuth for mwclient
-with open(config.datafolder+'wikibase/DavidL_bot_pwd.txt', 'r', encoding='utf-8') as pwdfile:
-	awbuserpass = pwdfile.read()
+# ahotsak wikibase OAuth for mwclient
 site = mwclient.Site('datuak.ahotsak.eus')
 def get_token():
 	global site
-	global awbpass
-
-	login = site.login(username=config.awbuser, password=awbuserpass)
+	login = site.login(username=config.awbuser, password=config.awbuserpass)
 	csrfquery = site.api('query', meta='tokens')
 	token=csrfquery['query']['tokens']['csrftoken']
 	print("Got fresh CSRF token for datuak.ahotsak.eus.")
 	return token
 token = get_token()
 
-# Loads known awbqid-lexbibUri mappings and awbqid-Wikidataqid mappins from jsonl-files
-def load_knownqid():
-	knownqid = {}
-	try:
-		with open(config.datafolder+'wikibase/mappings/lexbibmappings.csv', encoding="utf-8") as csvfile:
-			rows = csv.reader(csvfile, delimiter=",")
-			count = 0
-			header = next(rows)
-			for row in rows:
-				count += 1
-				if len(row) > 0:
-					try:
-						knownqid[row[0]] = row[1]
-					except Exception as ex:
-						print('Found unparsable mapping json in lexbibmappings.csv line ['+str(count)+']: ')
-						print(str(ex))
-						pass
-	except Exception as ex:
-		print ('Error: knownqid file does not exist. Will start a new one.')
-		print (str(ex))
-	#print(str(knownqid))
-	print('Known awb Qid loaded.')
-	return knownqid
-#knownqid = load_knownqid()
+# # Loads known awbqid-lexbibUri mappings and awbqid-Wikidataqid mappins from jsonl-files
+# def load_knownqid():
+# 	knownqid = {}
+# 	try:
+# 		with open(config.datafolder+'wikibase/mappings/lexbibmappings.csv', encoding="utf-8") as csvfile:
+# 			rows = csv.reader(csvfile, delimiter=",")
+# 			count = 0
+# 			header = next(rows)
+# 			for row in rows:
+# 				count += 1
+# 				if len(row) > 0:
+# 					try:
+# 						knownqid[row[0]] = row[1]
+# 					except Exception as ex:
+# 						print('Found unparsable mapping json in lexbibmappings.csv line ['+str(count)+']: ')
+# 						print(str(ex))
+# 						pass
+# 	except Exception as ex:
+# 		print ('Error: knownqid file does not exist. Will start a new one.')
+# 		print (str(ex))
+# 	#print(str(knownqid))
+# 	print('Known awb Qid loaded.')
+# 	return knownqid
+# #knownqid = load_knownqid()
 
 def load_wdmappings():
 	wdmappings = {}
@@ -220,9 +213,8 @@ def searchlem(lemma):
 	return lids
 
 
-
 # Get equivalent awb item qidnum from wikidata Qid
-def wdqid2awbqid(wdqid):
+def wdid2awbid(wdqid):
 	print('Will try to find awbqid for '+wdqid+'...')
 	global wdmappings
 	# Try to find awbqid from known mappings
@@ -231,14 +223,17 @@ def wdqid2awbqid(wdqid):
 			print('Found awbqid in wdmappings known mappings.')
 			return key
 	# Try to find awbqid via SPARQL
-	url = "https://datuak.ahotsak.eus/query/sparql?format=json&query=PREFIX%20awb%3A%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fentity%2F%3E%0APREFIX%20ldp%3A%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fprop%2Fdirect%2F%3E%0A%0Aselect%20%3FawbItem%20where%0A%7B%20%3FawbItem%20ldp%3AP4%20wd%3A"+wdqid+"%20.%20%7D"
+	url = "https://datuak.ahotsak.eus/query/sparql?format=json&query=PREFIX%20awb%3A%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fentity%2F%3E%0APREFIX%20ldp%3A%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fprop%2Fdirect%2F%3E%0A%0Aselect%20%3FawbItem%20where%0A%7B%20%3FawbItem%20ldp%3AP1%20wd%3A"+wdqid+"%20.%20%7D"
 
 	while True:
 		try:
 			r = requests.get(url)
 			awbqid = r.json()['results']['bindings'][0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
+			if len(r.json()['results']['bindings']) > 1:
+				print('***WARNING: This wdid is found TWICE in awb: '+wdqid)
+				logging.warning('This wdid is found TWICE in awb: '+wdqid)
 		except Exception as ex:
-			print('Error: SPARQL request failed.')
+			print('Error: SPARQL request returned no awbid.')
 			time.sleep(2)
 			return False
 		break
@@ -246,7 +241,7 @@ def wdqid2awbqid(wdqid):
 	save_wdmapping(wdqid, awbqid)
 	return awbqid
 
-# creates a new item
+# creates a new lexeme
 def newlexeme(lemma, lang, pos):
 	global token
 
@@ -275,12 +270,14 @@ def newlexeme(lemma, lang, pos):
 		return lid
 
 # creates a new form
-def newform(lid, form):
+def newform(lid, form, gram=None, wdform_id=None):
 	global token
 
 	data = {"representations":{"eu":{"value":form,"language":"eu"}}}
-	done = False
-	while (not done):
+	if gram:
+		data["grammaticalFeatures"] = gram
+	done = 0
+	while done < 1:
 		try:
 			formcreation = site.post('wbladdform', token=token, format="json", lexemeId=lid, bot=1, data=json.dumps(data))
 			#itemcreation = site.post('wbeditentity', token=token, format="json", id=lid, bot=1, data=json.dumps(data))
@@ -291,19 +288,58 @@ def newform(lid, form):
 			else:
 				print(str(ex))
 				time.sleep(4)
+				done += 0.2
 			continue
 		#print(str(itemcreation))
 		if formcreation['success'] == 1:
-			done = True
-			print(str(formcreation))
+			#print(str(formcreation))
 			formid = formcreation['form']['id']
 			print('Form creation for '+lid+': success: '+formid)
+			if wdform_id:
+				updateclaim(formid,"P1",wdform_id,"string")
+			return True
 		else:
 			print('Form creation failed, will try again...')
 			time.sleep(2)
+			done += 0.2
+	print('awb.newform failed 5 times.'+lid+','+form+','+str(gram)+','+wdform_id)
+	logging.error('awb.newform failed 5 times.'+lid+','+form+','+str(gram)+','+wdform_id)
+	return False
 
-		return formid
 
+# updates a form
+def updateform(form_id, form, gram=None, wdform_id=None):
+	global token
+	if wdform_id:
+		updateclaim(form_id,"P1",wdform_id,"string")
+	data = {"representations":{"eu":{"value":form,"language":"eu"}}}
+	if gram:
+		data["grammaticalFeatures"] = gram
+	done = 0
+	while done < 1:
+		try:
+			formcreation = site.post('wbleditformelements', token=token, format="json", formId=form_id, bot=1, data=json.dumps(data))
+
+		except Exception as ex:
+			if 'Invalid CSRF token.' in str(ex):
+				print('Wait a sec. Must get a new CSRF token...')
+				token = get_token()
+			else:
+				print(str(ex))
+				time.sleep(4)
+				done += 0.2
+			continue
+		#print(str(itemcreation))
+		if formcreation['success'] == 1:
+			print('Form update for '+form_id+': success.')
+			return True
+		else:
+			print('Form update for '+form_id+' failed, will try again...')
+			time.sleep(2)
+			done += 0.2
+	print('awb.updateform failed 5 times.'+form_id+','+form+','+str(gram)+','+wdform_id)
+	logging.error('awb.updateform failed 5 times.'+form_id+','+form+','+str(gram)+','+wdform_id)
+	return False
 
 
 # creates a new item
@@ -312,7 +348,7 @@ def newitemwithlabel(awbclasses, labellang, label, type="item"): # awbclasses: '
 	#global knownqid
 	if isinstance(awbclasses, str) == True: # if a single value is passed as string, not as list
 		awbclasses = [awbclasses]
-	data = {"labels":{"en":{"language":labellang,"value":label}}}
+	data = {"labels":{labellang:{"language":labellang,"value":label}}}
 	done = False
 	while (not done):
 		try:
@@ -354,33 +390,35 @@ def newitemwithlabel(awbclasses, labellang, label, type="item"): # awbclasses: '
 
 # function for wikibase item creation (after check if it is known)
 #token = get_token()
-def getqid(awbclasses, wdItem, onlyknown=False): # awbclass: object of 'instance of' (P5), wdItem = lexbibUri (P3) of the (known or new) q-item
+def getqid(awbclasses, wdItem, onlyknown=False): # awbclass: object of 'instance of' (P5), wdItem = wikidata-entity (P1) of the (known or new) q-item
 	global token
 	global wdmappings
 	if isinstance(awbclasses, str) == True: # if a single value is passed as string, not as list
 		awbclasses = [awbclasses]
-	if wdItem in wdmappings:
-		print(wdItem+' is a known wikibase item: Qid '+wdmappings[wdItem]+', no need to create it.')
-		return wdmappings[wdItem]
+	awbid = wdid2awbid(wdItem)
+	if awbid != False:
+		print(wdItem+' is a known wikibase item: Qid '+awbid+', no need to create it.')
+		return awbid
 	#if onlyknown:
 		#print('This wd item is not in the known mapping: '+wdItem)
 		#return False
-	wdItemSafe = urllib.parse.quote(wdItem, safe='~', encoding="utf-8")
-	url = "https://datuak.ahotsak.eus/query/sparql?format=json&query=SELECT%20%3FawbItem%20%0AWHERE%20%0A%7B%20%20%3FawbItem%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fprop%2Fdirect%2FP5%3E%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fentity%2F"+awbclasses[0]+"%3E.%20%0A%0A%20%20%20%3FawbItem%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fprop%2Fdirect%2FP4%3E%20%3C"+wdItemSafe+"%3E%20.%0A%7D"
-	done = False
-	while (not done):
-		try:
-			r = requests.get(url)
-			results = r.json()['results']['bindings']
-		except Exception as ex:
-			print('Error: SPARQL request failed.')
-			time.sleep(2)
-			continue
-
-		done = True
-	if len(results) == 0:
+	#wdItemSafe = urllib.parse.quote(wdItem, safe='~', encoding="utf-8")
+	# url = "https://datuak.ahotsak.eus/query/sparql?format=json&query=SELECT%20%3FawbItem%20%0AWHERE%20%0A%7B%20%20%3FawbItem%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fprop%2Fdirect%2FP5%3E%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fentity%2F"+awbclasses[0]+"%3E.%20%0A%0A%20%20%20%3FawbItem%20%3Chttp%3A%2F%2Fdatuak.ahotsak.eus%2Fprop%2Fdirect%2FP4%1E%20%3C"+wdItem+"%3E%20.%0A%7D"
+	# done = False
+	# while (not done):
+	# 	try:
+	# 		r = requests.get(url)
+	# 		results = r.json()['results']['bindings']
+	# 	except Exception as ex:
+	# 		print('Error: SPARQL request failed.')
+	# 		time.sleep(2)
+	# 		continue
+	#
+	# 	done = True
+	#if len(results) == 0:
+	else:
 		print('Found no Qid for Wikidata Item '+wdItem+', will create it.')
-		claim = {"claims":[{"mainsnak":{"snaktype":"value","property":"P4","datavalue":{"value":wdItem,"type":"string"}},"type":"statement","rank":"normal"}]}
+		claim = {"claims":[{"mainsnak":{"snaktype":"value","property":"P1","datavalue":{"value":wdItem,"type":"string"}},"type":"statement","rank":"normal"}]}
 		done = False
 		while (not done):
 			try:
@@ -397,18 +435,19 @@ def getqid(awbclasses, wdItem, onlyknown=False): # awbclass: object of 'instance
 			if itemcreation['success'] == 1:
 				done = True
 				qid = itemcreation['entity']['id']
-				print('Item creation for '+wdItem+': success. QID = '+qid)
+				print('Item creation for wikidata '+wdItem+': success. QID = '+qid)
 			else:
 				print('Item creation failed, will try again...')
 				time.sleep(2)
-
+		wdmappings[wdItem] = qid
+		save_wdmapping(wdItem,qid)
 
 
 		for awbclass in awbclasses:
 			done = False
 			while (not done):
 				claim = {"entity-type":"item","numeric-id":int(awbclass.replace("Q",""))}
-				classclaim = site.post('wbcreateclaim', token=token, entity=qid, property="P5", snaktype="value", value=json.dumps(claim))
+				classclaim = site.post('wbcreateclaim', token=token, entity=qid, property="P3", snaktype="value", value=json.dumps(claim))
 				try:
 					if classclaim['success'] == 1:
 						done = True
@@ -417,21 +456,20 @@ def getqid(awbclasses, wdItem, onlyknown=False): # awbclass: object of 'instance
 				except:
 					print('Claim creation failed, will try again...')
 					time.sleep(2)
-		wdmappings[wdItem] = qid
-		save_wdmapping(wdItem,qid)
+
 		return qid
-	elif len(results) > 1:
-		print('*** Error: Found more than one awb item for one wd item that should be unique... will take the first result.')
-		qid = results[0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
-		wdmappings[wdItem] = qid
-		save_wdmapping(wdItem,qid)
-		return qid
-	elif len(results) == 1:
-		qid = results[0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
-		print('Found '+wdItem+' not in wdmappings file but on awb: Qid '+qid+'; no need to create it, will add to wdmappings file.')
-		wdmappings[wdItem] = qid
-		save_wdmapping(wdItem,qid)
-		return qid
+	# elif len(results) > 1:
+	# 	print('*** Error: Found more than one awb item for one wd item that should be unique... will take the first result.')
+	# 	qid = results[0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
+	# 	wdmappings[wdItem] = qid
+	# 	save_wdmapping(wdItem,qid)
+	# 	return qid
+	# elif len(results) == 1:
+	# 	qid = results[0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
+	# 	print('Found '+wdItem+' not in wdmappings file but on awb: Qid '+qid+'; no need to create it, will add to wdmappings file.')
+	# 	wdmappings[wdItem] = qid
+	# 	save_wdmapping(wdItem,qid)
+	# 	return qid
 
 #get label
 def getlabel(qid, lang):
