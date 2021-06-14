@@ -1,0 +1,27 @@
+PREFIX awb: <http://datuak.ahotsak.eus/entity/>
+PREFIX adp: <http://datuak.ahotsak.eus/prop/direct/>
+PREFIX ap: <http://datuak.ahotsak.eus/prop/>
+PREFIX aps: <http://datuak.ahotsak.eus/prop/statement/>
+PREFIX apq: <http://datuak.ahotsak.eus/prop/qualifier/>
+
+select ?lexeme ?lemma
+(group_concat(?wikidata_lexeme;SEPARATOR="; ") as ?wikidata_lexemes)
+(group_concat(?wikidata_posLabel;SEPARATOR="; ") as ?wikidata_posLabels)
+(group_concat(?elhuyar_lemma;SEPARATOR="; ") as ?elhuyar_IDs)
+(group_concat(?elhuyar_posLabel;SEPARATOR="; ") as ?elhuyar_posLabels)
+
+where {
+?lexeme wikibase:lemma ?lemma.
+  OPTIONAL {?lexeme ap:P1 ?wikidata_lexeme_statement.
+            ?wikidata_lexeme_statement aps:P1 ?wikidata_lexeme;
+                                       apq:P6 ?wikidata_pos.
+            ?wikidata_pos rdfs:label ?wikidata_posLabel. filter(lang(?wikidata_posLabel)="eu")}
+  OPTIONAL {?lexeme ap:P8 ?elhuyar_lemma_statement.
+            ?elhuyar_lemma_statement aps:P8 awb:Q19; # Q19: Elhuyar
+                                     apq:P7 ?elhuyar_lemma;
+                                     apq:P6 ?elhuyar_pos.
+            ?elhuyar_pos rdfs:label ?elhuyar_posLabel. filter(lang(?elhuyar_posLabel)="eu")}
+
+} GROUP BY ?lexeme ?lemma ?wikidata_lexemes ?wikidata_posLabels ?elhuyar_IDs ?elhuyar_posLabels
+#order by LCASE(?lemma)
+LIMIT 100
