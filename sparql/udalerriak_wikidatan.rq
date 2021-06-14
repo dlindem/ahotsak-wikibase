@@ -1,0 +1,20 @@
+#EH-ko udalerriak wikidatan
+
+SELECT ?item ?itemLabel 
+WHERE {
+  {
+  ?item wdt:P31 wd:Q2074737.  # municipality of Spain
+  {?item wdt:P131+ wd:Q3995.} # EAE
+    UNION
+  {?item wdt:P131+ wd:Q4018.}  # Nafarroa
+  }
+  UNION
+  {
+  ?item wdt:P31 wd:Q484170.  # municipality of France
+  {?item wdt:P131+ wd:Q673040.}  # Zuberoa
+    UNION
+  {?item wdt:P131+ wd:Q671023.}  # Lapurdi
+    UNION
+  {?item wdt:P131+ wd:Q638503.}  # Behe Nafarroa
+  } SERVICE wikibase:label { bd:serviceParam wikibase:language "eu". }
+} order by ?itemLabel
