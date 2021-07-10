@@ -1,14 +1,10 @@
 import csv
-import sys
-import time
-import re
 import config
-import json
 import awb
 
-infilename = config.datafolder+'wikidata/lid_lemma_elhid_verbs.csv'
-resourceitem = "Q19" #Q19: Elhuyar
-positem = "Q8" # Q7: substantibo, Q8: aditza
+infilename = config.datafolder+'wikidata/lid_lemma_category_AhId_Elhid_adverbs.csv'
+#resourceitem = "Q19" #Q19: Elhuyar
+#positem = "Q8" # Q7: substantibo, Q8: aditza
 
 with open(infilename, encoding="utf-8") as csvfile:
 	sourcedict = csv.DictReader(csvfile)
@@ -31,8 +27,7 @@ with open(infilename, encoding="utf-8") as csvfile:
 			lexeme = awb.newlexeme(row['lemma'], "Q17", "Q18")
 			awb.save_wdmapping(row["lexemeId"],lexeme)
 		wdstatement = awb.updateclaim(lexeme, "P1", row["lexemeId"].replace("http://www.wikidata.org/entity/",""), "string")
+		positem = awb.wdid2awbid(row["category"].replace("http://www.wikidata.org/entity/",""))
 		quali = awb.setqualifier(lexeme, "P1", wdstatement, "P6", positem, "item")
-		if row['ElhID'] != "":
-			resourcestatement = awb.updateclaim(lexeme, "P8", resourceitem, "item")
-			quali = awb.setqualifier(lexeme, "P55", resourcestatement, "P7", row['ElhID'], "string")
-			quali = awb.setqualifier(lexeme, "P55", resourcestatement, "P6", positem, "item")
+		if row['ElhId'] != "":
+			quali = awb.setqualifier(lexeme, "P1", wdstatement, "P7", row['ElhId'], "string")
