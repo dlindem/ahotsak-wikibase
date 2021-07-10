@@ -270,8 +270,20 @@ def newlexeme(lemma, lang, pos):
 		return lid
 
 # creates a new form
-def newform(lid, form, gram=None, wdform_id=None):
+def newform(lid, form, gram=None, wdform_id=None, nodupcheck = None):
 	global token
+
+	existingforms = {}
+	request = site.get('wbgetentities', ids=lid)
+	if "success" in request:
+		try:
+			for existform in request['entities'][lid]['forms']:
+				existingforms[existform['representations']['eu']['value']] = existform['id']
+			if nodupcheck and form in existingforms:
+				print('This form already exists: '+existingforms[form])
+				return existingforms[form]
+		except Exception as ex:
+			print('Get existing forms operation failed for: '+lid) #,str(ex))
 
 	data = {"representations":{"eu":{"value":form,"language":"eu"}}}
 	if gram:
@@ -297,7 +309,7 @@ def newform(lid, form, gram=None, wdform_id=None):
 			print('Form creation for '+lid+': success: '+formid)
 			if wdform_id:
 				updateclaim(formid,"P1",wdform_id,"string")
-			return True
+			return formid
 		else:
 			print('Form creation failed, will try again...')
 			time.sleep(2)
@@ -332,7 +344,7 @@ def updateform(form_id, form, gram=None, wdform_id=None):
 		#print(str(itemcreation))
 		if formcreation['success'] == 1:
 			print('Form update for '+form_id+': success.')
-			return True
+			return formid
 		else:
 			print('Form update for '+form_id+' failed, will try again...')
 			time.sleep(2)
@@ -348,7 +360,7 @@ def newitemwithlabel(awbclasses, labellang, label, type="item"): # awbclasses: '
 	#global knownqid
 	if isinstance(awbclasses, str) == True: # if a single value is passed as string, not as list
 		awbclasses = [awbclasses]
-	data = {"labels":{labellang:{"language":labellang,"value":label}}}
+	data = {"labels":{"en":{"language":labellang,"value":label}}}
 	done = False
 	while (not done):
 		try:
@@ -687,11 +699,11 @@ def updateclaim(s, p, o, dtype): # for novalue: o="novalue", dtype="novalue"
 	elif dtype == "item" or dtype =="wikibase-entityid":
 		value = json.dumps({"entity-type":"item","numeric-id":int(o.replace("Q",""))})
 	elif dtype == "lexeme":
-		print('Will try to write Lexeme as object: '+o)
+		print('Will try to write Lexeme as claimobject: '+o)
 		value = json.dumps({"entity-type":"lexeme","id":o,"numeric-id":int(o.replace("L",""))})
 	elif dtype == "novalue":
 		value = "novalue"
-	#print('Will go for claims for',s,p)
+	print('Will go for claims for',s,p)
 	claims = getclaims(s,p)
 	if claims == False:
 		return False
@@ -721,7 +733,7 @@ def updateclaim(s, p, o, dtype): # for novalue: o="novalue", dtype="novalue"
 				#print("A statement #"+str(statementcount)+" for prop "+p+" is already there: "+foundo)
 
 				if foundo == o or foundo == value:
-					print('Found redundant triple ('+p+') '+o+' >> Claim update skipped.')
+					print('Found redundant triple '+s+' ('+p+') '+o+' >> Claim update skipped.')
 					return guid
 
 				elif p in max1props:
@@ -785,6 +797,9 @@ def setqualifier(qid, prop, claimid, qualiprop, qualivalue, dtype):
 		qualivalue = '"'+qualivalue.replace('"', '\\"')+'"'
 	elif dtype == "item" or dtype =="wikibase-entityid":
 		qualivalue = json.dumps({"entity-type":"item","numeric-id":int(qualivalue.replace("Q",""))})
+	elif dtype == "lexeme":
+		print('Will try to write Lexeme as qualiobject: '+qualivalue)
+		value = json.dumps({"entity-type":"lexeme","id":qualivalue,"numeric-id":int(qualivalue.replace("L",""))})
 
 	# claims = getclaims(qid,prop)
 	# foundobjs = []
@@ -798,7 +813,7 @@ def setqualifier(qid, prop, claimid, qualiprop, qualivalue, dtype):
 			setqualifier = site.post('wbsetqualifier', token=token, claim=claimid, property=qualiprop, snaktype="value", value=qualivalue, bot=1)
 			# always set!!
 			if setqualifier['success'] == 1:
-				print('Qualifier set for '+qualiprop+': success.')
+				print('Qualifier set for '+qualiprop+': success: '+qualivalue)
 				return True
 			print('Qualifier set failed, will try again...')
 			logging.error('Qualifier set failed for '+prop+' ('+qualiprop+') '+qualivalue+': '+str(ex))
@@ -883,11 +898,13 @@ def get_wikipedia_url_from_wikidata_id(wikidata_id, lang='en', debug=False):
 
 #remove claim
 def removeclaim(guid):
+	guidfix = re.compile(r'^([QL]\d+)\-')
+	guid = re.sub(guidfix, r'\1$', guid)
 	global token
 	done = False
 	while (not done):
 		try:
-			results = site.post('wbremoveclaims', claim=guid, token=token)
+			results = site.post('wbremoveclaims', claim=guid, token=token, bot=1)
 			if results['success'] == 1:
 				print('Wb remove claim for '+guid+': success.')
 				done = True
@@ -907,7 +924,7 @@ def removequali(guid, hash):
 	done = False
 	while (not done):
 		try:
-			results = site.post('wbremovequalifiers', claim=guid, qualifiers=hash, token=token)
+			results = site.post('wbremovequalifiers', claim=guid, qualifiers=hash, token=token, bot=1)
 			if results['success'] == 1:
 				print('Wb remove qualifier success.')
 				done = True
