@@ -353,7 +353,34 @@ def updateform(form_id, form, gram=None, wdform_id=None):
 	logging.error('awb.updateform failed 5 times.'+form_id+','+form+','+str(gram)+','+wdform_id)
 	return False
 
+#remove form
+def removeform(form_id):
+	global token
+	done = 0
+	while done < 1:
+		try:
+			formremoval = site.post('wblremoveform', token=token, format="json", id=form_id, bot=1)
 
+		except Exception as ex:
+			if 'Invalid CSRF token.' in str(ex):
+				print('Wait a sec. Must get a new CSRF token...')
+				token = get_token()
+			else:
+				print(str(ex))
+				time.sleep(4)
+				done += 0.2
+			continue
+		#print(str(itemcreation))
+		if formremoval['success'] == 1:
+			print('Form removal for '+form_id+': success.')
+			return True
+		else:
+			print('Form removal for '+form_id+' failed, will try again...')
+			time.sleep(2)
+			done += 0.2
+	print('awb.removeform failed 5 times.'+form_id)
+	logging.error('awb.removeform failed 5 times.'+form_id)
+	return False
 # creates a new item
 def newitemwithlabel(awbclasses, labellang, label, type="item"): # awbclasses: 'instance of' (P5)
 	global token
