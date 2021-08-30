@@ -17,5 +17,5 @@ PREFIX apr: <http://datuak.ahotsak.eus/prop/reference/>
 """
 # Properties with constraint: max. 1 value
 max1props = [
-#"P1"
+"P19"
 ]
