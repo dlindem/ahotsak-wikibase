@@ -72,7 +72,7 @@ def load_wdmappings():
 					try:
 						mappingjson = json.loads(mapping)
 						#print(mapping)
-						wdmappings[mappingjson['awbqid']] = mappingjson['wdqid']
+						wdmappings[mappingjson['awbid']] = mappingjson['wdid']
 					except Exception as ex:
 						print('Found unparsable mapping json in wdmappings.jsonl line ['+str(count)+']: '+mapping)
 						print(str(ex))
@@ -85,10 +85,19 @@ def load_wdmappings():
 	return wdmappings
 wdmappings = load_wdmappings()
 
+# Get equivalent awb item qidnum from wikidata Qid
+def wdid2awbid(wdid):
+	#print('Will try to find awbid for '+wdid+'...')
+	global wdmappings
+	for key, value in wdmappings.items():
+		if wdid == value:
+			print('Found awbid in wdids known mappings: '+key)
+			return key
+
 # Adds a new awbqid-wdqid mapping to wdmappings.jsonl mapping file
-def save_wdmapping(wd, awb):
+def save_wdmapping(wdid, awbid):
 	with open(config.datafolder+'wikibase/mappings/wdmappings.jsonl', 'a', encoding="utf-8") as jsonl_file:
-		jsonl_file.write(json.dumps({'wdqid':wd.replace("http://www.wikidata.org/entity/",""),'awbqid':awb.replace("http://datuak.ahotsak.eus/entity/","")})+'\n')
+		jsonl_file.write(json.dumps({'wdid':wdid.replace("http://www.wikidata.org/entity/",""),'awbid':awbid.replace("http://datuak.ahotsak.eus/entity/","")})+'\n')
 
 # # search for lemma, return matching lid list
 # def searchlem(lemma):
@@ -730,7 +739,7 @@ def updateclaim(s, p, o, dtype): # for novalue: o="novalue", dtype="novalue"
 		value = json.dumps({"entity-type":"lexeme","id":o,"numeric-id":int(o.replace("L",""))})
 	elif dtype == "novalue":
 		value = "novalue"
-	print('Will go for claims for',s,p)
+	#print('Will go for claims for',s,p)
 	claims = getclaims(s,p)
 	if claims == False:
 		return False
