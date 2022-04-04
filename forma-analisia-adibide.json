@@ -1,0 +1,9 @@
+{
+    "forma": "beldurrezkoaren",
+    "analisiak": [
+			{"zatiketa": "beldurrez+ko+aren", "analisia": "ADBARR+GEL+GEN"},
+			{"zatiketa": "beldurrez+ko+aren+0", "analisia": "ADBARR+GEL+GEN+ABS"},
+			{"zatiketa": "beldur+z+ko+aren", "analisia": "IZEARR+INS+GEL+GEN"},
+			{"zatiketa": "beldur+z+ko+aren+0", "analisia": "IZEARR+INS+GEL+GEN+ABS"}
+		]
+}

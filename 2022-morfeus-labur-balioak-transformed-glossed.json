@@ -1,0 +1,160 @@
+{
+  "ERL": {
+    "ta": "ERL_ta",
+    "n": "ERL_n",
+    "keran": "ERL_keran",
+    "na": "ERL_na",
+    "ba": "ba_ERL",
+    "la": "ERL_la",
+    "bait": "bait_ERL",
+    "nean": "ERL_nean",
+    "nez": "ERL_nez",
+    "lako": "ERL_lako",
+    "larik": "ERL_larik",
+    "nik": "ERL_nik",
+    "neko": "ERL_neko",
+    "nerako": "ERL_nerako",
+    "netik": "ERL_netik",
+    "lakoan": "ERL_lakoan",
+    "netz": "ERL_netz",
+    "ki": "ERL_ki",
+    "ino": "ERL_ino"
+  },
+  "ABS": {
+    "0": "ABS_MUG",
+    "a": "ABS_SG2",
+    "ak": "ABS_PL2",
+    "ok": "ABS_PL1",
+    "k": "ABS_PL2",
+    "ek": "ABS_ek",
+    "ori": "ABS_SG1"
+  },
+  "DEK": {
+    "0": "DEK",
+    "eta": "DEK_eta",
+    "ta": "DEK_ta",
+    "ota": "DEK_ota",
+    "a": "DEK_a",
+    "au": "DEK_au",
+    "ori": "DEK_ori",
+    "ekin": "DEK_ekin"
+  },
+  "ABL": {
+    "tik": "ABL_tik",
+    "ik": "ABL_ik",
+    "gandik": "ABL_BIZ",
+    "danik": "ABL_DNB"
+  },
+  "GRA": {
+    "ago": "GRA_KOMP",
+    "en": "GRA_SUP",
+    "egi": "GRA_egi",
+    "xe": "GRA_xe"
+  },
+  "ERG": {
+    "k": "ERG_SG",
+    "ak": "ERG_SG",
+    "ek": "ERG_PL2",
+    "ok": "ERG_PL1"
+  },
+  "DAT": {
+    "i": "DAT_SG",
+    "ari": "DAT_SG",
+    "ei": "DAT_PL2",
+    "oi": "DAT_PL1"
+  },
+  "INE": {
+    "an": "INE_SG",
+    "n": "INE_SG",
+    "gan": "INE_BIZ",
+    "tan": "INE_MUG"
+  },
+  "SOZ": {
+    "arekin": "SOZ_SG",
+    "ekin": "SOZ_PL2",
+    "okin": "SOZ_PL1",
+    "rekin": "SOZ_MUG"
+  },
+  "GEN": {
+    "aren": "GEN_SG",
+    "en": "GEN_PL2",
+    "on": "GEN_PL1",
+    "re": "GEN_SG_re"
+  },
+  "ALA": {
+    "ra": "ALA",
+    "rat": "ALA",
+    "gana": "ALA_BIZ"
+  },
+  "GEL": {
+    "ko": "GEL"
+  },
+  "BNK": {
+    "ko": "BNK"
+  },
+  "DESK": {
+    "ko": "DESK"
+  },
+  "PAR": {
+    "ik": "PAR"
+  },
+  "INS": {
+    "z": "INS_SG1",
+    "az": "INS_SG2",
+    "ez": "INS_PL2",
+    "oz": "INS_PL1",
+    "otaz": "INS_MUG1",
+    "taz": "INS_MUG2",
+    "etaz": "INS_PL2",
+    "ezaz": "INS_PL2",
+    "zaz": "INS_SG2"
+  },
+  "ABU": {
+    "raino": "ABU",
+    "ganaino": "ABU_BIZ",
+    "ino": "ABU",
+    "daino": "ABU_DNB",
+    "rarte": "ABU_DNB"
+  },
+  "PRO": {
+    "tako": "PRO",
+    "tzat": "PRO"
+  },
+  "DES": {
+    "ontzat": "DES_PL1",
+    "arendako": "DES_SG",
+    "arentzat": "DES_SG",
+    "endako": "DES_PL2",
+    "entzat": "DES_PL2",
+    "rendako": "DES_SG",
+    "retzat": "DES_SG"
+  },
+  "ABZ": {
+    "rantz": "ABZ",
+    "ganantz": "ABZ_BIZ",
+    "ntz": "ABZ"
+  },
+  "AMM": {
+    "0": "AMM",
+    "tu": "AMM_tu",
+    "tze": "AMM_tze",
+    "i": "AMM_i",
+    "te": "AMM_te"
+  },
+  "ASP": {
+    "0": "ASP",
+    "ko": "ASP_ko",
+    "tzear": "ASP_tzear",
+    "tzen": "ASP_tzen",
+    "en": "ASP_en",
+    "tzeke": "ASP_tzeke",
+    "ten": "ASP_ten",
+    "teke": "ASP_teke",
+    "tear": "ASP_tear"
+  },
+  "MOT": {
+    "gatik": "MOT",
+    "arren": "MOT",
+    "agatik": "MOT"
+  }
+}

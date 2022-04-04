@@ -13,7 +13,7 @@ from wikidataintegrator import wdi_core, wdi_login
 import config
 
 # Properties with constraint: max. 1 value
-max1props = config.max1props
+card1props = config.card1props
 
 # Logging config
 logging.basicConfig(filename=config.datafolder+'logs/awb.log', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%m-%y %H:%M:%S')
@@ -353,7 +353,7 @@ def updateform(form_id, form, gram=None, wdform_id=None):
 		#print(str(itemcreation))
 		if formcreation['success'] == 1:
 			print('Form update for '+form_id+': success.')
-			return formid
+			return form_id
 		else:
 			print('Form update for '+form_id+' failed, will try again...')
 			time.sleep(2)
@@ -396,7 +396,7 @@ def newitemwithlabel(awbclasses, labellang, label, type="item"): # awbclasses: '
 	#global knownqid
 	if isinstance(awbclasses, str) == True: # if a single value is passed as string, not as list
 		awbclasses = [awbclasses]
-	data = {"labels":{"en":{"language":labellang,"value":label}}}
+	data = {"labels":{labellang:{"language":labellang,"value":label}}}
 	done = False
 	while (not done):
 		try:
@@ -423,7 +423,7 @@ def newitemwithlabel(awbclasses, labellang, label, type="item"): # awbclasses: '
 				done = False
 				while (not done):
 					claim = {"entity-type":type,"numeric-id":int(awbclass.replace("Q",""))}
-					classclaim = site.post('wbcreateclaim', token=token, entity=qid, property="P5", snaktype="value", value=json.dumps(claim))
+					classclaim = site.post('wbcreateclaim', token=token, entity=qid, property="P3", snaktype="value", value=json.dumps(claim))
 					try:
 						if classclaim['success'] == 1:
 							done = True
@@ -524,8 +524,11 @@ def getlabel(qid, lang):
 	done = False
 	while True:
 		request = site.get('wbgetentities', ids=qid, props="labels", languages=lang)
-		if request['success'] == 1:
+		if request['success'] == 1 and lang in request["entities"][qid]["labels"]:
 			return request["entities"][qid]["labels"][lang]["value"]
+		elif lang not in request["entities"][qid]["labels"]:
+			print('No label for this language found on awb.')
+			return None
 		else:
 			print('Something went wrong with label retrieval for '+qid+', will try again.')
 			time.sleep(3)
@@ -719,7 +722,7 @@ def getclaimfromstatement(guid):
 
 #update claims
 def updateclaim(s, p, o, dtype): # for novalue: o="novalue", dtype="novalue"
-	global max1props
+	global card1props
 	global token
 
 	if dtype == "time":
@@ -772,7 +775,7 @@ def updateclaim(s, p, o, dtype): # for novalue: o="novalue", dtype="novalue"
 					print('Found redundant triple '+s+' ('+p+') '+o+' >> Claim update skipped.')
 					return guid
 
-				elif p in max1props:
+				elif p in card1props:
 					print('('+p+') is a max 1 prop. Will replace statement.')
 
 					while True:
@@ -827,15 +830,107 @@ def updateclaim(s, p, o, dtype): # for novalue: o="novalue", dtype="novalue"
 
 
 # set a Qualifier
-def setqualifier(qid, prop, claimid, qualiprop, qualivalue, dtype):
+def setqualifier(qid, prop, claimid, qualiprop, qualio, dtype):
 	global token
-	if dtype == "string" or dtype == "url" or dtype == "monolingualtext":
-		qualivalue = '"'+qualivalue.replace('"', '\\"')+'"'
+	if dtype == "string" or dtype == "url":
+		qualivalue = '"'+qualio.replace('"', '\\"')+'"'
 	elif dtype == "item" or dtype =="wikibase-entityid":
-		qualivalue = json.dumps({"entity-type":"item","numeric-id":int(qualivalue.replace("Q",""))})
+		qualivalue = json.dumps({"entity-type":"item","numeric-id":int(qualio.replace("Q",""))})
+	elif dtype == "time":
+		qualivalue = json.dumps({
+		"entity-type":"time",
+		"time": qualio['time'],
+	    "timezone": 0,
+	    "before": 0,
+	    "after": 0,
+	    "precision": qualio['precision'],
+	    "calendarmodel": "http://www.wikidata.org/entity/Q1985727"})
+	elif dtype == "monolingualtext":
+		qualivalue = json.dumps(qualio)
 	elif dtype == "lexeme":
-		print('Will try to write Lexeme as qualiobject: '+qualivalue)
-		value = json.dumps({"entity-type":"lexeme","id":qualivalue,"numeric-id":int(qualivalue.replace("L",""))})
+		print('Will try to write Lexeme as qualiobject: '+qualio)
+		qualivalue = json.dumps({"entity-type":"lexeme","id":qualio,"numeric-id":int(qualio.replace("L",""))})
+	if qualiprop in config.card1props:
+		#print('Detected card1prop as qualifier.')
+		existingclaims = getclaims(qid,prop)
+		#print(str(existingclaims))
+		qid = existingclaims[0]
+		existingclaims = existingclaims[1]
+		if prop in existingclaims:
+			for claim in existingclaims[prop]:
+				if claim['id'] != claimid:
+					continue # skip other claims
+				if "qualifiers" in claim:
+					if qualiprop in claim['qualifiers']:
+						existingqualihashes = {}
+						for quali in claim['qualifiers'][qualiprop]:
+							existingqualihash = quali['hash']
+							existingqualivalue = quali['datavalue']['value']
+							if isinstance(existingqualivalue, dict):
+								if "time" in existingqualivalue:
+									existingqualivalue = {"time":existingqualivalue['time'],"precision":existingqualivalue['precision']}
+								if "text" in existingqualivalue and "language" in existingqualivalue:
+									existingqualivalue = json.dumps(existingqualivalue)
+							existingqualihashes[existingqualihash] = existingqualivalue
+						#print('Found an existing '+qualiprop+' type card1 qualifier: '+str(list(existingqualihashes.values())[0]))
+						allhashes = list(existingqualihashes.keys())
+						done = False
+						while (not done):
+							if len(existingqualihashes) > 1:
+								print('Found several qualis, but cardinality is 1; will delete all but the newest.')
+								for delqualihash in allhashes:
+									if delqualihash == allhashes[len(allhashes)-1]: # leave the last one intact
+										print('Will leave intact this quali: '+existingqualihashes[delqualihash])
+										existingqualihash = existingqualihashes[delqualihash]
+									else:
+										removequali(claimid,delqualihash)
+										del existingqualihashes[delqualihash]
+							elif len(existingqualihashes) == 1:
+								done = True
+
+						if str(list(existingqualihashes.values())[0]) in qualivalue:
+							#print('Found duplicate value for card1 quali. Skipped.')
+							return True
+						if dtype == "time":
+							if list(existingqualihashes.values())[0]['time'] == qualio['time'] and list(existingqualihashes.values())[0]['precision'] == qualio['precision']:
+								#print('Found duplicate value for '+qualiprop+' type time card1 quali. Skipped.')
+								return True
+
+						print('New value to be written to existing card1 quali.')
+						try:
+							while True:
+								setqualifier = site.post('wbsetqualifier', token=token, claim=claimid, snakhash=existingqualihash, property=qualiprop, snaktype="value", value=qualivalue, bot=1)
+								# always set!!
+								if setqualifier['success'] == 1:
+									print('Qualifier set ('+qualiprop+') '+qualivalue+': success.')
+									return True
+								print('Qualifier set failed, will try again...')
+								logging.error('Qualifier set failed for '+prop+' ('+qualiprop+') '+qualivalue+': '+str(ex))
+								time.sleep(2)
+
+						except Exception as ex:
+							if 'The statement has already a qualifier' in str(ex):
+								print('The statement already has that object as ('+qualiprop+') qualifier: skipped writing duplicate qualifier')
+								return False
+	# not a max1quali >> write new quali in case value is different to existing value
+	try:
+		while True:
+			setqualifier = site.post('wbsetqualifier', token=token, claim=claimid, property=qualiprop, snaktype="value", value=qualivalue, bot=1)
+			# always set!!
+			if setqualifier['success'] == 1:
+				print('Qualifier set ('+qualiprop+') '+qualivalue+': success.')
+				return True
+			print('Qualifier set failed, will try again...')
+			logging.error('Qualifier set failed for '+prop+' ('+qualiprop+') '+qualivalue+': '+str(ex))
+			time.sleep(2)
+
+	except Exception as ex:
+		if 'The statement has already a qualifier' in str(ex):
+			print('The statement already has a ('+qualiprop+') '+qualivalue+': skipped writing duplicate qualifier')
+			return False
+
+
+
 
 	# claims = getclaims(qid,prop)
 	# foundobjs = []

@@ -16,6 +16,9 @@ PREFIX apq: <http://datuak.ahotsak.eus/prop/qualifier/>
 PREFIX apr: <http://datuak.ahotsak.eus/prop/reference/>
 """
 # Properties with constraint: max. 1 value
-max1props = [
+card1props = [
+"P12",
+"P13",
+"P14",
 "P19"
 ]
