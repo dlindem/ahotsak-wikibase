@@ -97,7 +97,7 @@ def wdid2awbid(wdid):
 # Adds a new awbqid-wdqid mapping to wdmappings.jsonl mapping file
 def save_wdmapping(wdid, awbid):
 	with open(config.datafolder+'wikibase/mappings/wdmappings.jsonl', 'a', encoding="utf-8") as jsonl_file:
-		jsonl_file.write(json.dumps({'wdid':wdid.replace("http://www.wikidata.org/entity/",""),'awbid':awbid.replace("http://datuak.ahotsak.eus/entity/","")})+'\n')
+		jsonl_file.write(json.dumps({'wdid':wdid.replace("http://www.wikidata.org/entity/",""),'awbid':awbid.replace("https://datuak.ahotsak.eus/entity/","")})+'\n')
 
 # # search for lemma, return matching lid list
 # def searchlem(lemma):
@@ -159,7 +159,7 @@ with open(config.datafolder+'wikibase/mappings/lid_lemma.csv', 'r', encoding="ut
 	lid_lem_csv = csv.DictReader(mappingfile)
 	lid_lem = {}
 	for row in lid_lem_csv:
-		lid_lem[row['lemma']] = row['lid'].replace("http://datuak.ahotsak.eus/entity/","")
+		lid_lem[row['lemma']] = row['lid'].replace("https://datuak.ahotsak.eus/entity/","")
 def save_lidmapping(lid,lemma):
 	with open(config.datafolder+'wikibase/mappings/lid_lemma.csv', 'a', encoding="utf-8") as mappingfile:
 		mappingfile.write(lid+","+lemma+"\n")
@@ -176,11 +176,11 @@ def searchlem(lemma):
 	print('lemma not found in lid_lemma mapping, trying with SPARQL...')
 	lemma = '"'+lemma+'"'
 	query = """
-	PREFIX awb: <http://datuak.ahotsak.eus/entity/>
-	PREFIX adp: <http://datuak.ahotsak.eus/prop/direct/>
-	PREFIX ap: <http://datuak.ahotsak.eus/prop/>
-	PREFIX aps: <http://datuak.ahotsak.eus/prop/statement/>
-	PREFIX apq: <http://datuak.ahotsak.eus/prop/qualifier/>
+	PREFIX awb: <https://datuak.ahotsak.eus/entity/>
+	PREFIX adp: <https://datuak.ahotsak.eus/prop/direct/>
+	PREFIX ap: <https://datuak.ahotsak.eus/prop/>
+	PREFIX aps: <https://datuak.ahotsak.eus/prop/statement/>
+	PREFIX apq: <https://datuak.ahotsak.eus/prop/qualifier/>
 
 	select ?l ?lemma ?lang #?lexcat
 	 where {
@@ -215,7 +215,7 @@ def searchlem(lemma):
 		rowindex += 1
 		item = sparql.unpack_row(row, convert=None, convert_type={})
 		#print('\nNow processing sparql result item ['+str(rowindex)+']:\n'+str(item))
-		lid = item[0].replace("http://datuak.ahotsak.eus/entity/","")
+		lid = item[0].replace("https://datuak.ahotsak.eus/entity/","")
 		lemma = item[1]
 		#lexcat = item[3]
 		lids.append(lid)
@@ -237,7 +237,7 @@ def wdid2awbid(wdqid):
 	while True:
 		try:
 			r = requests.get(url)
-			awbqid = r.json()['results']['bindings'][0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
+			awbqid = r.json()['results']['bindings'][0]['awbItem']['value'].replace("https://datuak.ahotsak.eus/entity/","")
 			if len(r.json()['results']['bindings']) > 1:
 				print('***WARNING: This wdid is found TWICE in awb: '+wdqid)
 				logging.warning('This wdid is found TWICE in awb: '+wdqid)
@@ -508,12 +508,12 @@ def getqid(awbclasses, wdItem, onlyknown=False): # awbclass: object of 'instance
 		return qid
 	# elif len(results) > 1:
 	# 	print('*** Error: Found more than one awb item for one wd item that should be unique... will take the first result.')
-	# 	qid = results[0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
+	# 	qid = results[0]['awbItem']['value'].replace("https://datuak.ahotsak.eus/entity/","")
 	# 	wdmappings[wdItem] = qid
 	# 	save_wdmapping(wdItem,qid)
 	# 	return qid
 	# elif len(results) == 1:
-	# 	qid = results[0]['awbItem']['value'].replace("http://datuak.ahotsak.eus/entity/","")
+	# 	qid = results[0]['awbItem']['value'].replace("https://datuak.ahotsak.eus/entity/","")
 	# 	print('Found '+wdItem+' not in wdmappings file but on awb: Qid '+qid+'; no need to create it, will add to wdmappings file.')
 	# 	wdmappings[wdItem] = qid
 	# 	save_wdmapping(wdItem,qid)
@@ -701,7 +701,9 @@ def getclaims(s, p):
 				logging.error(s+' does not exist (wbgetclaims error.)')
 				return False
 
-			print('Getclaims operation failed, will try again...\n'+str(ex))
+			print(str(ex))
+
+			print('\nGetclaims operation failed, will try again...\n'+str(ex))
 			time.sleep(4)
 		print('Getclaims operation failed, will try again...\n')
 		time.sleep(4)

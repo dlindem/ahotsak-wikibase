@@ -45,17 +45,19 @@ with open('D:/Ahotsak/wikibase/mappings/lemma_lid.csv', 'r', encoding="utf-8") a
 	lemma_lid_csv = csv.DictReader(csvfile)
 	lemma_lid = {}
 	for row in lemma_lid_csv:
-		lemma_lid[row['lemma']] = row['lexeme'].replace("http://datuak.ahotsak.eus/entity/","")
+		lemma_lid[row['lemma']] = row['lexeme'].replace("https://datuak.ahotsak.eus/entity/","")
 with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', encoding="utf-8") as jsonfile:
 	etcfile = json.load(jsonfile)
 	print('Data loaded.\n')
 
 	loopcount = 0
 	for entry in etcfile:
-		entrycount += 1
-		if loopcount < entrycount:
+		loopcount += 1
+		if loopcount <= entrycount:
 			print('Entry done before, skipped.')
+			continue
 
+		entrycount += 1
 		if entry['lema'] in lemma_lid:
 			lid = lemma_lid[entry['lema']]
 			print('Took known lid '+lid+' for lemma: '+entry['lema'])
@@ -79,14 +81,14 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 
 		# get existing forms
 		query = """
-		PREFIX awb: <http://datuak.ahotsak.eus/entity/>
-		PREFIX adp: <http://datuak.ahotsak.eus/prop/direct/>
-		PREFIX ap: <http://datuak.ahotsak.eus/prop/>
-		PREFIX aps: <http://datuak.ahotsak.eus/prop/statement/>
-		PREFIX apq: <http://datuak.ahotsak.eus/prop/qualifier/>
+		PREFIX awb: <https://datuak.ahotsak.eus/entity/>
+		PREFIX adp: <https://datuak.ahotsak.eus/prop/direct/>
+		PREFIX ap: <https://datuak.ahotsak.eus/prop/>
+		PREFIX aps: <https://datuak.ahotsak.eus/prop/statement/>
+		PREFIX apq: <https://datuak.ahotsak.eus/prop/qualifier/>
 
-		select distinct ?wrep (concat('["',group_concat(distinct strafter(str(?form),"http://datuak.ahotsak.eus/entity/");SEPARATOR='","'),'"]') as ?forms)
-			(concat('["',group_concat(strafter(str(?gram),"http://datuak.ahotsak.eus/entity/");SEPARATOR='","'),'"]') as ?gramgroups)
+		select distinct ?wrep (concat('["',group_concat(distinct strafter(str(?form),"https://datuak.ahotsak.eus/entity/");SEPARATOR='","'),'"]') as ?forms)
+			(concat('["',group_concat(strafter(str(?gram),"https://datuak.ahotsak.eus/entity/");SEPARATOR='","'),'"]') as ?gramgroups)
 
 			where {
 		      awb:"""+lid+""" wikibase:lemma ?lemma;
@@ -111,9 +113,9 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 
 
 		for form in entry['formak']:
-
+			print('\nProcessing form: '+form['forma']+'\n')
 			# process analisiak
-			seen_analisiak = []
+			seen_analisiak = {}
 			seen_grmgrp = {}
 			for analisia in form['analisiak']:
 				gramgrp = []
@@ -121,24 +123,27 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 				print(str(zatiketa))
 				laburdurak = analisia['analisia'].split(' + ')
 				print(str(laburdurak))
+				if 'ATZ' in laburdurak: # TBD!!
+					print('Form with ATZizki skipped and saved in atzizkidunak.csv')
+					with open('D:/Ahotsak/ETC/atzizkidunak.csv', 'a') as atzfile:
+						atzfile.write(lid+'\t'+form['forma']+'\t'+'+'.join(zatiketa)+'\t'+'+'.join(laburdurak)+'\n')
+						continue
+				glossed_laburdurak = []
 				# remove Null-morphemes from analysis
 				index = 0
 				while index < len(zatiketa):
 					if zatiketa[index] == "0":
 						if index == 1 and len(zatiketa) == 2 and laburdurak[index] == "ABS":
 							print('Found Null-morpheme ABS as only analysis. Left it in its place.')
+							break
 						else:
 							del zatiketa[index]
 							print('Removed Null analisis of type '+laburdurak[index]+'.')
 							del laburdurak[index]
-							index += 1
+							#index += 1
+					else:
+						index += 1
 
-					index += 1
-				seen_analisia = "+".join(laburdurak)
-				if seen_analisia in seen_analisiak:
-					print('This analysis has been processed (duplicate after Null-analysis removal): '+seen_analisia+'.')
-					continue
-				seen_analisiak.append(seen_analisia)
 				# process aurrizkiak
 				if laburdurak[0] == "ERL" or laburdurak[0] == "PRT" or laburdurak[0] == "AUR":
 					if laburdura[0] in allowed_aurrizkiak:
@@ -151,6 +156,21 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 				pos = laburdurak.pop(0)
 				zati1 = zatiketa.pop(0)
 
+				seen_analisia = "+".join(laburdurak)
+				if seen_analisia == "":
+					seen_analisia = "NULL"
+				if seen_analisia in seen_analisiak:
+					if pos in seen_analisiak[seen_analisia]:
+						print('This analysis has been processed for the same POS (duplicate after Null-analysis removal): '+seen_analisia+'.')
+						continue
+					else: # same analysis, new pos
+						# write pos to form
+						if pos in allowed_morfeus_pos:
+							awb.setqualifier(formid, "P13", etcformstatement, "P6", allowed_morfeus_pos[pos], "item")
+							seen_analisiak[seen_analisia].append(pos)
+				else:
+					seen_analisiak[seen_analisia] = [pos]
+
 				if pos in posqid.keys() or (len(laburdurak) > 0 and laburdurak[0] in posqid.keys()): # means after the lemma comes a second lemma (stuff like "antropomorfizatu")
 					print('Found one of these strange double-lempos items. Skipped: '+pos+'+'+str(laburdurak[0]),zati1+str(zatiketa[0]))
 					time.sleep(1)
@@ -162,31 +182,51 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 				# go through atzizki analyisis
 				for index in range(len(laburdurak)):
 					gramqid = morfeus_qid[morfeusgloss[laburdurak[index]][zatiketa[index]]]
+					labur_gloss = morfeusgloss[laburdurak[index]][zatiketa[index]]
 					gramgrp.append(gramqid)
+					glossed_laburdurak.append(labur_gloss)
 				print('Defined gramgroup: '+str(gramgrp))
 				if len(gramgrp) < 1:
 					print('Empty gramgrp, analysis skipped.')
 					continue
-				if "+".join(gramgrp) in seen_grmgrp:
-					print('An equal gramgrp has been written to this form already, skipped.')
+				if "+".join(gramgrp) not in seen_grmgrp:
+					seen_grmgrp["+".join(gramgrp)] = [pos]
+				else:
+					print('An equal gramgrp has been written to this form already. Form ID stays the same.')
+					seen_grmgrp["+".join(gramgrp)].append(pos)
+					morfposstatement = awb.updateclaim(formid, "P24", allowed_morfeus_pos[pos], "item")
+					print('*** Second POS has been added to this form-gramgroup.')
 					continue
 				# get form id for this analysis
 				if form['forma'] in existing_forms and len(existing_forms[form['forma']]) > 0:
 					formid = existing_forms[form['forma']].pop(0)
-					print('Will use existing matching written rep of form '+formid+' for form: '+form['forma'])
+					print('Found existing matching written rep of form '+formid+' for form: '+form['forma'])
 					update = awb.updateform(formid, form['forma'], gram=gramgrp)
 				else:
-					print('No grmgrp-free matching written rep exists... Will create new form.')
+					print('No matching written rep exists... Will create new form.')
 					formid = awb.newform(lid, form['forma'], gram=gramgrp)
+					# existing_forms[form['forma']].append(formid)
 				# write ETC info
 				etcformstatement = awb.updateclaim(formid, "P13", form["forma"], "string")
 				awb.setqualifier(formid, "P13", etcformstatement, "P14", str(form['agerpenak']), "string")
 				# write pos to form
-				awb.setqualifier(formid, "P13", etcformstatement, "P6", allowed_morfeus_pos[pos], "item")
-				# write morphological analysis to P21 string
-				awb.setqualifier(formid, "P13", etcformstatement, "P21", "+".join(gramgrp), "string")
+				# awb.setqualifier(formid, "P13", etcformstatement, "P6", allowed_morfeus_pos[pos], "item")
+				morfposstatement = awb.updateclaim(formid, "P24", allowed_morfeus_pos[pos], "item")
+				# # write morphological analysis to P21 quali string
+				# awb.setqualifier(formid, "P13", etcformstatement, "P21", "+".join(glossed_laburdurak), "string")
 
+				# write MORFEUS info
+				gramord = 0
+				for gramqid in gramgrp:
+					print(gramqid)
+					gramord += 1
+					morfstatement = awb.updateclaim(formid, "P22", gramqid, "item")
+					awb.setqualifier(formid, "P21", morfstatement, "P23", str(gramord), "string")
 
+		print('Finished processing '+lid+'.\n\n')
+
+		with open('D:/Ahotsak/ETC/writeprogress.txt', 'w', encoding="utf-8") as file:
+			file.write(str(entrycount))
 	# end of entry loop
-	with open('D:/Ahotsak/wikibase/ETC/writeprogress.txt', 'w', encoding="utf-8") as file:
-		file.write(str(entrycount))
+
+print('Finished.')
