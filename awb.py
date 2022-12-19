@@ -18,11 +18,11 @@ card1props = config.card1props
 # Logging config
 logging.basicConfig(filename=config.datafolder+'logs/awb.log', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%m-%y %H:%M:%S')
 
-# WDI setup
-mediawiki_api_url = "https://datuak.ahotsak.eus/w/api.php" # <- change to applicable wikibase
-sparql_endpoint_url = "https://datuak.ahotsak.eus/query/sparql"  # <- change to applicable wikibase
-login = wdi_login.WDLogin(config.awbuser, config.awbuserpass, mediawiki_api_url=mediawiki_api_url)
-awbEngine = wdi_core.WDItemEngine.wikibase_item_engine_factory(mediawiki_api_url, sparql_endpoint_url)
+# # WDI setup
+# mediawiki_api_url = "https://datuak.ahotsak.eus/w/api.php" # <- change to applicable wikibase
+# sparql_endpoint_url = "https://datuak.ahotsak.eus/query/sparql"  # <- change to applicable wikibase
+# login = wdi_login.WDLogin(config.awbuser, config.awbuserpass, mediawiki_api_url=mediawiki_api_url)
+# awbEngine = wdi_core.WDItemEngine.wikibase_item_engine_factory(mediawiki_api_url, sparql_endpoint_url)
 
 # ahotsak wikibase OAuth for mwclient
 site = mwclient.Site('datuak.ahotsak.eus')
@@ -35,35 +35,10 @@ def get_token():
 	return token
 token = get_token()
 
-# # Loads known awbqid-lexbibUri mappings and awbqid-Wikidataqid mappins from jsonl-files
-# def load_knownqid():
-# 	knownqid = {}
-# 	try:
-# 		with open(config.datafolder+'wikibase/mappings/lexbibmappings.csv', encoding="utf-8") as csvfile:
-# 			rows = csv.reader(csvfile, delimiter=",")
-# 			count = 0
-# 			header = next(rows)
-# 			for row in rows:
-# 				count += 1
-# 				if len(row) > 0:
-# 					try:
-# 						knownqid[row[0]] = row[1]
-# 					except Exception as ex:
-# 						print('Found unparsable mapping json in lexbibmappings.csv line ['+str(count)+']: ')
-# 						print(str(ex))
-# 						pass
-# 	except Exception as ex:
-# 		print ('Error: knownqid file does not exist. Will start a new one.')
-# 		print (str(ex))
-# 	#print(str(knownqid))
-# 	print('Known awb Qid loaded.')
-# 	return knownqid
-# #knownqid = load_knownqid()
-
 def load_wdmappings():
 	wdmappings = {}
 	try:
-		with open(config.datafolder+'wikibase/mappings/wdmappings.jsonl', encoding="utf-8") as f:
+		with open(config.datafolder+'wdmappings.jsonl', encoding="utf-8") as f:
 			mappings = f.read().split('\n')
 			count = 0
 			for mapping in mappings:
@@ -96,7 +71,7 @@ def wdid2awbid(wdid):
 
 # Adds a new awbqid-wdqid mapping to wdmappings.jsonl mapping file
 def save_wdmapping(wdid, awbid):
-	with open(config.datafolder+'wikibase/mappings/wdmappings.jsonl', 'a', encoding="utf-8") as jsonl_file:
+	with open(config.datafolder+'wdmappings.jsonl', 'a', encoding="utf-8") as jsonl_file:
 		jsonl_file.write(json.dumps({'wdid':wdid.replace("http://www.wikidata.org/entity/",""),'awbid':awbid.replace("https://datuak.ahotsak.eus/entity/","")})+'\n')
 
 # # search for lemma, return matching lid list
@@ -155,13 +130,13 @@ def save_wdmapping(wdid, awbid):
 # 	return lids
 
 # load and save lid_lemma mapping
-with open(config.datafolder+'wikibase/mappings/lid_lemma.csv', 'r', encoding="utf-8") as mappingfile:
+with open(config.datafolder+'lid_lemma.csv', 'r', encoding="utf-8") as mappingfile:
 	lid_lem_csv = csv.DictReader(mappingfile)
 	lid_lem = {}
 	for row in lid_lem_csv:
 		lid_lem[row['lemma']] = row['lid'].replace("https://datuak.ahotsak.eus/entity/","")
 def save_lidmapping(lid,lemma):
-	with open(config.datafolder+'wikibase/mappings/lid_lemma.csv', 'a', encoding="utf-8") as mappingfile:
+	with open(config.datafolder+'lid_lemma.csv', 'a', encoding="utf-8") as mappingfile:
 		mappingfile.write(lid+","+lemma+"\n")
 
 # search for lemma, return matching lid list

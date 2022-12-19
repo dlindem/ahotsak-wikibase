@@ -30,23 +30,23 @@ allowed_morfeus_pos = {
 
 
 print('\nLoading data...')
-with open('D:/Ahotsak/ETC/writeprogress.txt', 'r', encoding="utf-8") as file:
+with open('data/writeprogress.txt', 'r', encoding="utf-8") as file:
 	entrycount = int(file.read())
 	print('\n'+str(entrycount)+' entries have been done in previous runs.')
 	time.sleep(1)
-with open('2022-morfeus-labur-balioak-transformed-glossed.json', 'r', encoding="utf-8") as jsonfile:
+with open('data/2022-morfeus-labur-balioak-transformed-glossed.json', 'r', encoding="utf-8") as jsonfile:
 	morfeusgloss = json.load(jsonfile)
-with open('morfeus_qid.csv', 'r', encoding="utf-8") as csvfile:
+with open('data/morfeus_qid.csv', 'r', encoding="utf-8") as csvfile:
 	morfeus_csv = csv.DictReader(csvfile)
 	morfeus_qid = {}
 	for row in morfeus_csv:
 		morfeus_qid[row['laburLabel']] = row['laburQid']
-with open('D:/Ahotsak/wikibase/mappings/lemma_lid.csv', 'r', encoding="utf-8") as csvfile:
+with open('data/lemma_lid.csv', 'r', encoding="utf-8") as csvfile:
 	lemma_lid_csv = csv.DictReader(csvfile)
 	lemma_lid = {}
 	for row in lemma_lid_csv:
 		lemma_lid[row['lemma']] = row['lexeme'].replace("https://datuak.ahotsak.eus/entity/","")
-with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', encoding="utf-8") as jsonfile:
+with open('data/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', encoding="utf-8") as jsonfile:
 	etcfile = json.load(jsonfile)
 	print('Data loaded.\n')
 
@@ -74,7 +74,7 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 				awb.setqualifier(lid,"P12",etcstatement,"P6",posqid[pos],"item")
 			else:
 				print('Found strange pos: '+pos+'... Will save to extrafile.')
-				with open('D:/Ahotsak/ETC/2022-ETC-lemak-strangepos', 'a', encoding="utf-8") as jsonlfile:
+				with open('data/2022-ETC-lemak-strangepos', 'a', encoding="utf-8") as jsonlfile:
 					jsonlfile.write(json.dumps({'pos':pos,'entry':entry})+"\n")
 		# set etc agerraldiak (lema)
 		awb.setqualifier(lid, "P12", etcstatement, "P14", str(entry['lema_agerpenak']), "string")
@@ -125,7 +125,7 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 				print(str(laburdurak))
 				if 'ATZ' in laburdurak: # TBD!!
 					print('Form with ATZizki skipped and saved in atzizkidunak.csv')
-					with open('D:/Ahotsak/ETC/atzizkidunak.csv', 'a') as atzfile:
+					with open('data/atzizkidunak.csv', 'a') as atzfile:
 						atzfile.write(lid+'\t'+form['forma']+'\t'+'+'.join(zatiketa)+'\t'+'+'.join(laburdurak)+'\n')
 						continue
 				glossed_laburdurak = []
@@ -225,7 +225,7 @@ with open('D:/Ahotsak/ETC/2022-ETC-lemak-formak_MORFEUS_enriched.json', 'r', enc
 
 		print('Finished processing '+lid+'.\n\n')
 
-		with open('D:/Ahotsak/ETC/writeprogress.txt', 'w', encoding="utf-8") as file:
+		with open('data/writeprogress.txt', 'w', encoding="utf-8") as file:
 			file.write(str(entrycount))
 	# end of entry loop
 
